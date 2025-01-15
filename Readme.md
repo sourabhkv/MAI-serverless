@@ -1,0 +1,1 @@
+Implementation of Mistral AI chat using azure functions
