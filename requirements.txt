@@ -1,3 +1,4 @@
 azure-functions
 azurefunctions-extensions-http-fastapi
-openai
+aiohttp
+azure-ai-inference

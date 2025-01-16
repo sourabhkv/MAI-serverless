@@ -1,9 +1,8 @@
 import azure.functions as func
 import os, json
 from azurefunctions.extensions.http.fastapi import Request, StreamingResponse, HTMLResponse
-from azure.ai.inference import ChatCompletionsClient
-from azure.ai.inference.models import SystemMessage
-from azure.ai.inference.models import UserMessage
+from azure.ai.inference.aio import ChatCompletionsClient   # Optimized for streaming
+from azure.ai.inference.models import SystemMessage, UserMessage
 from azure.core.credentials import AzureKeyCredential
 
 # Azure Function App
@@ -11,17 +10,16 @@ app = func.FunctionApp(http_auth_level=func.AuthLevel.ANONYMOUS)
 
 client = ChatCompletionsClient(
     endpoint="https://models.inference.ai.azure.com",
-    credential=AzureKeyCredential('API KEY'),
+    credential=AzureKeyCredential('KEY'),
 )
 
 # Get data from Azure Open AI
 async def stream_processor(response):
-    for chunk in response:
+    async for chunk in response:
         if chunk.choices:
             yield json.dumps({
-                        "content": chunk.choices[0].delta.content
-                    }, ensure_ascii=False) + "\n"
-
+                "content": chunk.choices[0].delta.content
+            }, ensure_ascii=False) + "\n"
 
 # HTTP streaming Azure Function
 @app.route(route="chat", methods=[func.HttpMethod.POST])
@@ -30,9 +28,9 @@ async def stream_openai_text(req: Request) -> StreamingResponse:
     prompt = req_body.get('prompt')
     model = req_body.get('model')  # Get the model parameter from the request body
 
-    response = client.complete(
+    response = await client.complete(
         messages=[
-            SystemMessage(content=""""""),
+            SystemMessage(content="You are a helpful assistant."),
             UserMessage(content=prompt),
         ],
         model=model,
@@ -43,7 +41,6 @@ async def stream_openai_text(req: Request) -> StreamingResponse:
     )
 
     return StreamingResponse(stream_processor(response), media_type="application/x-ndjson")
-
 
 # Serve the index.html file
 @app.route(route="home", methods=[func.HttpMethod.GET])
